@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  auth-service:
+    build:
+      context: ./auth-service
+    container_name: auth-service
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mysql-auth-db
+    environment:
+      DATABASE_URL: mysql://root:root@mysql-auth-db:3306/authdb
+    volumes:
+      - ./auth-service:/app
+    restart: unless-stopped
+    networks:
+      - micro-net
+
+  mysql-auth-db:
+    image: mysql:8
+    container_name: mysql-auth-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: authdb
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_auth_data:/var/lib/mysql
+    restart: unless-stopped
+    networks:
+      - micro-net
+
+  user-service:
+    build:
+      context: ./user-service
+    container_name: user-service
+    ports:
+      - "3001:3000"
+    depends_on:
+      - mysql-user-db
+      - auth-service
+    environment:
+      DATABASE_URL: mysql://root:root@mysql-user-db:3306/userdb
+      AUTH_SERVICE_URL: http://auth-service:3000
+    volumes:
+      - ./user-service:/app
+    restart: unless-stopped
+    networks:
+      - micro-net
+
+  mysql-user-db:
+    image: mysql:8
+    container_name: mysql-user-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: userdb
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_user_data:/var/lib/mysql
+    restart: unless-stopped
+    networks:
+      - micro-net
+
+volumes:
+  mysql_auth_data:
+  mysql_user_data:
+
+networks:
+  micro-net:
+    driver: bridge
